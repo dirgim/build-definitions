@@ -8,7 +8,7 @@ spec:
   workspaces:
     - name: workspace
   params:
-    - name: BASE_IMAGE
+    - name: BASE_IMAGE_REPO
   steps:
     - name: summary
       image: quay.io/redhat-appstudio/hacbs-test:stable
@@ -29,7 +29,7 @@ spec:
         # sanity-inspect-image
         if [ ! -s sanity-inspect-image/base_image_inspect.json ]; then
           echo sanity-inspect-image test FAIL
-          echo Unable to inspect base image - $(params.BASE_IMAGE)
+          echo Unable to inspect base image - $(params.BASE_IMAGE_REPO)
         else
            echo sanity-inspect-image test PASS
         fi

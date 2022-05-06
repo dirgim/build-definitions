@@ -18,3 +18,4 @@ resources:
 - update-infra-deployments.yaml
 - get-clair-scan.yaml
 - conftest-clair.yaml
+- deprecated-image-check.yaml

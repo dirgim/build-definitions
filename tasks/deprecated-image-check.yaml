@@ -15,10 +15,11 @@ spec:
     - name: POLICY_NAMESPACE
       description: "Namespace for the conftest policy"
       default: "required_checks"
-
+  workspaces:
+    - name: workspace
   results:
-    - name: PYXIS_HTTP_CODE
-      description: HTTP code returned by Pyxis API endpoint
+    - description: HTTP code returned by Pyxis API endpoint
+      name: PYXIS_HTTP_CODE
     - description: Test output
       name: HACBS_TEST_OUTPUT
 
@@ -26,10 +27,11 @@ spec:
     # Download Pyxis metadata about the image
     - name: query-pyxis
       image: registry.access.redhat.com/ubi8/ubi
+      workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
       script: |
         #!/usr/bin/env bash
         echo "Querying Pyxis for $(inputs.params.IMAGE_REPOSITORY)..."
-        http_code=$(curl -s -o $(workspaces.sanity-ws.path)/repository_data.json -w '%{http_code}' "https://catalog.redhat.com/api/containers/v1/repositories/registry/$(inputs.params.IMAGE_REGISTRY)/repository/$(inputs.params.IMAGE_REPOSITORY)")
+        http_code=$(curl -s -o repository_data.json -w '%{http_code}' "https://catalog.redhat.com/api/containers/v1/repositories/registry/$(inputs.params.IMAGE_REGISTRY)/repository/$(inputs.params.IMAGE_REPOSITORY)")
 
         echo "Response code: $http_code"
         echo -n $http_code > $(results.PYXIS_HTTP_CODE.path)
@@ -37,6 +39,7 @@ spec:
     # Run the tests and save output
     - name: run-conftest
       image: quay.io/redhat-appstudio/hacbs-test:stable
+      workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
       script: |
         #!/usr/bin/env sh
         http_code=$(cat $(results.PYXIS_HTTP_CODE.path))
@@ -44,9 +47,9 @@ spec:
         if [ "$http_code" == "200" ];
         then
           echo "Running conftest using $(inputs.params.POLICY_DIR) policy, $(inputs.params.POLICY_NAMESPACE) namespace"
-          /usr/bin/conftest test --no-fail $(workspaces.sanity-ws.path)/repository_data.json \
+          /usr/bin/conftest test --no-fail repository_data.json \
           --policy $(inputs.params.POLICY_DIR) --namespace $(inputs.params.POLICY_NAMESPACE) \
-          --output=json | tee $(workspaces.sanity-ws.path)/deprecated_image_check_output.json || echo "Some tests failed"
+          --output=json | tee deprecated_image_check_output.json || echo "Some tests failed"
           echo "Done!"
           exit 0
         elif [ "$http_code" == "404" ];
@@ -59,6 +62,7 @@ spec:
     # Format the test results and save them as the HACBS_TEST_OUTPUT Tekton result
     - name: test-format-result
       image: quay.io/redhat-appstudio/hacbs-test:stable
+      workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
       script: |
         HACBS_ERROR_OUTPUT=$(jq -rc --arg date $(date +%s) --null-input \
           '{result: "ERROR", timestamp: $date}')
@@ -68,7 +72,5 @@ spec:
                    namespace,
                    successes,
                    failures: (.failures // [])|map(.metadata.details.name)
-                 }' $(workspaces.sanity-ws.path)/deprecated_image_check_output.json || true)
+                 }' deprecated_image_check_output.json || true)
         echo "${HACBS_TEST_OUTPUT:-${HACBS_ERROR_OUTPUT}}" | tee $(results.HACBS_TEST_OUTPUT.path)
-  workspaces:
-    - name: sanity-ws

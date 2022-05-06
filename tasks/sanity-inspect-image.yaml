@@ -11,8 +11,8 @@ spec:
       description: the fully qualified image name
       type: string
   results:
-    - description: Base image the source image is built from
-      name: BASE_IMAGE
+    - description: Base image repo the source image is built from
+      name: BASE_IMAGE_REPO
   workspaces:
     - name: workspace
   steps:
@@ -48,4 +48,4 @@ spec:
       BASE_IMAGE="${BASE_IMAGE_NAME%:*}@$BASE_IMAGE_DIGEST"
       echo "The base image is $BASE_IMAGE, get its manifest now"
       skopeo inspect --no-tags docker://$BASE_IMAGE  > $BASE_IMAGE_INSPECT || true
-      echo "$BASE_IMAGE" | tee $(results.BASE_IMAGE.path)
+      jq -r ".Name" $BASE_IMAGE_INSPECT | cut -d"/" -f2,3 | tee $(results.BASE_IMAGE_REPO.path)

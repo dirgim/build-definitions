@@ -40,6 +40,20 @@
 - op: add
   path: /spec/tasks/-
   value:
+    name: deprecated-base-image-check
+    runAfter:
+      - sanity-inspect-image
+    taskRef:
+      name: deprecated-image-check
+    params:
+      - name: IMAGE_REPOSITORY
+        value: $(tasks.sanity-inspect-image.results.BASE_IMAGE_REPO)
+    workspaces:
+      - name: workspace
+        workspace: workspace
+- op: add
+  path: /spec/tasks/-
+  value:
     name: get-clair-results
     runAfter:
       - build-container
@@ -60,8 +74,8 @@
     taskRef:
       name: hacbs-test-evaluation
     params:
-    - name: BASE_IMAGE
-      value: $(tasks.sanity-inspect-image.results.BASE_IMAGE)
+    - name: BASE_IMAGE_REPO
+      value: $(tasks.sanity-inspect-image.results.BASE_IMAGE_REPO)
     workspaces:
     - name: workspace
       workspace: workspace
